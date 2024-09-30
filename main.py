@@ -84,6 +84,7 @@ def parse_snippet(snippet):
   ts = snippet[on_idx+3:auth_idx]
 
   res = {"amount":amount, "place": place, "ts": ts}
+  print(res)
   return res
 
 
@@ -102,12 +103,12 @@ def main():
 
   try:
     service = build("gmail", "v1", credentials=creds)
-    mail_ids = fetch_all_mail_ids(service)
-    snippets = fetch_mail_snippets(service, mail_ids)
-    print("got", len(snippets), "snippets")
-    with open("snippets.txt", "w" ) as f:
-      for item in snippets:
-        f.write(f"{item}\n")
+    # mail_ids = fetch_all_mail_ids(service)
+    # snippets = fetch_mail_snippets(service, mail_ids)
+    # print("got", len(snippets), "snippets")
+    # with open("snippets.txt", "w" ) as f:
+    #   for item in snippets:
+    #     f.write(f"{item}\n")
 
     with open("snippets.txt", "r" ) as f:
       lines =  f.readlines()
