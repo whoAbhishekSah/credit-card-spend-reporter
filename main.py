@@ -33,6 +33,18 @@ def fetch_all_mail_ids(service):
   return mail_ids
 
 
+def fetch_mail_snippet(service, mail_id):
+  results = service.users().messages().get(userId="me", id=mail_id).execute()
+  return results.get("snippet", [])
+
+
+def fetch_mail_snippets(service, mail_ids):
+  snippets = []
+  for idx in mail_ids:
+    snippets.append(fetch_mail_snippet(service, idx))
+  return snippets
+
+
 def main():
   """Fetches mails matching the query pattern,
   parses them to prepare the spend reports
@@ -59,7 +71,8 @@ def main():
   try:
     service = build("gmail", "v1", credentials=creds)
     mail_ids = fetch_all_mail_ids(service)
-    print(mail_ids)
+    snippets = fetch_mail_snippets(service, mail_ids)
+    print("got", len(snippets), "snippets")
   except HttpError as error:
     # TODO(developer) - Handle errors from gmail API.
     print(f"An error occurred: {error}")
