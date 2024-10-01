@@ -5,12 +5,31 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+from datetime import datetime
+
+BILLING_START_DATE = int(os.getenv("BILLING_START_DATE"))
+
+assert isinstance(BILLING_START_DATE, int)
+assert 1 <= BILLING_START_DATE <= 30
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-INBOX_SEARCH_FILTER = "from:alerts@hdfcbank.net after:2024/09/24 before:2024/09/30"
-TEXT_MATCH = "Dear Card Member, Thank you for using your HDFC Bank Credit Card ending"
+CREDIT_CARD_TEXT_MATCH = "Dear Card Member, Thank you for using your HDFC Bank Credit Card ending"
+UPI_CREDIT_CARD_TEXT_MATCH = "has been debited from your HDFC Bank RuPay Credit Card"
 
+def get_inbox_search_filter():
+  current_day = datetime.now().day
+  current_month = datetime.now().month
+  current_year = datetime.now().month
+  if current_day >= BILLING_START_DATE:
+    inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/09/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+  else:
+    if current_month > 1:
+      inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/{current_month-1}/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+    else:
+      inbox_search_filter = f"from:alerts@hdfcbank.net after:{current_year-1}/{current_month-1}/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+  print("inbox search query", inbox_search_filter)
+  return inbox_search_filter
 
 def setup_auth():
   creds = None
@@ -36,7 +55,7 @@ def setup_auth():
 
 
 def fetch_all_mail_ids(service):
-  results = service.users().messages().list(userId="me", q=INBOX_SEARCH_FILTER).execute()
+  results = service.users().messages().list(userId="me", q=get_inbox_search_filter()).execute()
   mails = results.get("messages", [])
   res = []
   mail_ids = []
@@ -48,7 +67,7 @@ def fetch_all_mail_ids(service):
 
   print(f"len of mails {len(mails)}")
   while next_page_token != "":
-    results = service.users().messages().list(userId="me", q=INBOX_SEARCH_FILTER, pageToken=next_page_token).execute()
+    results = service.users().messages().list(userId="me", q=get_inbox_search_filter(), pageToken=next_page_token).execute()
     res.append(results)
     if "nextPageToken" in results:
       next_page_token = results["nextPageToken"]
@@ -87,12 +106,28 @@ def parse_snippet(snippet):
   print(res)
   return res
 
+def parse_upi_card_snippet(snippet):
+  rs_idx = snippet.index("Rs.")
+  has_idx = snippet.index("has")
+  to_idx = snippet.index("to ")
+  on_idx = snippet.index("on ")
+  end_idx = snippet.index(". Your UPI transaction")
+  
+  amount = snippet[rs_idx+3:has_idx-1]
+  place = snippet[to_idx+3:on_idx-1]
+  ts = snippet[on_idx+3:end_idx]
+
+  res = {"amount":amount, "place": place, "ts": ts}
+  print(res)
+  return res
+
 
 def get_amount_spent(snippet):
-  if snippet.startswith(TEXT_MATCH):
-    print(snippet)
+  if snippet.startswith(CREDIT_CARD_TEXT_MATCH):
     parsed = parse_snippet(snippet)
     return float(parsed["amount"])
+  if UPI_CREDIT_CARD_TEXT_MATCH in snippet:
+    parsed = parse_upi_card_snippet(snippet)
   return 0
 
 def main():
@@ -103,12 +138,13 @@ def main():
 
   try:
     service = build("gmail", "v1", credentials=creds)
-    # mail_ids = fetch_all_mail_ids(service)
-    # snippets = fetch_mail_snippets(service, mail_ids)
-    # print("got", len(snippets), "snippets")
-    # with open("snippets.txt", "w" ) as f:
-    #   for item in snippets:
-    #     f.write(f"{item}\n")
+    mail_ids = fetch_all_mail_ids(service)
+    print(f"got {len(mail_ids)} mails matching")
+    snippets = fetch_mail_snippets(service, mail_ids)
+    print("got", len(snippets), "snippets")
+    with open("snippets.txt", "w" ) as f:
+      for item in snippets:
+        f.write(f"{item}\n")
 
     with open("snippets.txt", "r" ) as f:
       lines =  f.readlines()
