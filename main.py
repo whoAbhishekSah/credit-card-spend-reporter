@@ -1,4 +1,5 @@
 import os.path
+import sys
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -135,16 +136,25 @@ def main():
   parses them to prepare the spend reports
   """
   creds = setup_auth()
+  n = len(sys.argv)
+  fetch_mails = False
+  if n == 2:
+    if sys.argv[1] == "fetch_mails":
+      fetch_mails = True
+  else:
+    print("invalid args")
 
   try:
     service = build("gmail", "v1", credentials=creds)
-    mail_ids = fetch_all_mail_ids(service)
-    print(f"got {len(mail_ids)} mails matching")
-    snippets = fetch_mail_snippets(service, mail_ids)
-    print("got", len(snippets), "snippets")
-    with open("snippets.txt", "w" ) as f:
-      for item in snippets:
-        f.write(f"{item}\n")
+
+    if fetch_mails:
+      mail_ids = fetch_all_mail_ids(service)
+      print(f"got {len(mail_ids)} mails matching")
+      snippets = fetch_mail_snippets(service, mail_ids)
+      print("got", len(snippets), "snippets")
+      with open("snippets.txt", "w" ) as f:
+        for item in snippets:
+          f.write(f"{item}\n")
 
     with open("snippets.txt", "r" ) as f:
       lines =  f.readlines()
