@@ -22,12 +22,12 @@ def get_inbox_search_filter():
   current_month = datetime.now().month
   current_year = datetime.now().month
   if current_day >= BILLING_START_DATE:
-    inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/09/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+    inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/09/{BILLING_START_DATE}"
   else:
     if current_month > 1:
-      inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/{current_month-1}/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+      inbox_search_filter = f"from:alerts@hdfcbank.net after:2024/{current_month-1}/{BILLING_START_DATE}"
     else:
-      inbox_search_filter = f"from:alerts@hdfcbank.net after:{current_year-1}/{current_month-1}/{BILLING_START_DATE} before:{datetime.today().strftime('%Y/%m/%d')}"
+      inbox_search_filter = f"from:alerts@hdfcbank.net after:{current_year-1}/{current_month-1}/{BILLING_START_DATE}"
   print("inbox search query", inbox_search_filter)
   return inbox_search_filter
 
