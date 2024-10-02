@@ -102,7 +102,7 @@ def parse_snippet(snippet):
   place = snippet[at_idx+3:on_idx-1]
   ts = snippet[on_idx+3:auth_idx]
 
-  res = {"amount":amount, "place": place, "ts": ts}
+  res = {"amount":amount, "place": place, "ts": ts,  "card": "credit card"}
   print(res)
   return res
 
@@ -117,7 +117,7 @@ def parse_upi_card_snippet(snippet):
   place = snippet[to_idx+3:on_idx-1]
   ts = snippet[on_idx+3:end_idx]
 
-  res = {"amount":amount, "place": place, "ts": ts}
+  res = {"amount":amount, "place": place, "ts": ts, "card": "upi card"}
   print(res)
   return res
 
