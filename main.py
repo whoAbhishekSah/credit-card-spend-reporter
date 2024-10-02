@@ -1,5 +1,6 @@
 import os.path
 import sys
+import pandas as pd
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -98,13 +99,12 @@ def parse_snippet(snippet):
   at_idx = snippet.index("at ")
   on_idx = snippet.index("on ")
   auth_idx = snippet.index(". Authorization")
-  
+
   amount = snippet[rs_idx+3:at_idx-1]
   place = snippet[at_idx+3:on_idx-1]
   ts = snippet[on_idx+3:auth_idx]
 
-  res = {"amount":amount, "place": place, "ts": ts,  "card": "credit card"}
-  print(res)
+  res = {"amount":float(amount), "place": place, "ts": ts,  "card": "credit card"}
   return res
 
 def parse_upi_card_snippet(snippet):
@@ -113,13 +113,12 @@ def parse_upi_card_snippet(snippet):
   to_idx = snippet.index("to ")
   on_idx = snippet.index("on ")
   end_idx = snippet.index(". Your UPI transaction")
-  
+
   amount = snippet[rs_idx+3:has_idx-1]
   place = snippet[to_idx+3:on_idx-1]
   ts = snippet[on_idx+3:end_idx]
 
-  res = {"amount":amount, "place": place, "ts": ts, "card": "upi card"}
-  print(res)
+  res = {"amount":float(amount), "place": place, "ts": ts, "card": "upi card"}
   return res
 
 
@@ -129,7 +128,19 @@ def get_amount_spent(snippet):
     return float(parsed["amount"])
   if UPI_CREDIT_CARD_TEXT_MATCH in snippet:
     parsed = parse_upi_card_snippet(snippet)
+    return float(parsed["amount"])
   return 0
+
+def parse_spendings(snippet):
+  parsed = {}
+  if snippet.startswith(CREDIT_CARD_TEXT_MATCH):
+    parsed = parse_snippet(snippet)
+  if UPI_CREDIT_CARD_TEXT_MATCH in snippet:
+    parsed = parse_upi_card_snippet(snippet)
+  if parsed != {}:
+    if parsed["card"] == "credit card":
+      parsed["ts"] = parsed["ts"].split(" ")[0]
+  return parsed
 
 def main():
   """Fetches mails matching the query pattern,
@@ -160,10 +171,18 @@ def main():
       lines =  f.readlines()
 
     total = 0
+    spendings = []
+
     for line in lines:
       total += get_amount_spent(line)
+      parsed = parse_spendings(line)
+      if parsed!={}:
+        spendings.append(parsed)
 
-    print(total)
+    df = pd.DataFrame.from_dict(spendings)
+
+    print (df)
+
   except HttpError as error:
     # TODO(developer) - Handle errors from gmail API.
     print(f"An error occurred: {error}")
